@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+
+# Database (exclude live DB, keep schema)
+backend/forensic.db
+
+# Evidence storage (large extracted files)
+backend/evidence_store/
+
+# Thumbnails (regenerated automatically)
+backend/thumbnails/
+
+# Environment variables
+.env
+*.env
+
+# Node.js / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
