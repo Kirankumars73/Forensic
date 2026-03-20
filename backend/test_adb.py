@@ -70,7 +70,7 @@ def main():
         if calls:
             print("\n  --- First 5 calls ---")
             for c in calls[:5]:
-                print(f"    {c['call_type']:10s} | {c['number']:20s} | {str(c['timestamp'])[:16]} | {c['duration_seconds']}s")
+                print(f"    {str(c['call_type']):10s} | {str(c['number']):20s} | {str(c['timestamp'])[:16]} | {c['duration_seconds']}s")
         else:
             print("  No call records found (phone may have no call history, or ADB permission denied)")
     except Exception as e:
@@ -85,7 +85,7 @@ def main():
             print("\n  --- First 5 SMS ---")
             for m in sms[:5]:
                 body_preview = (m.get("body") or "")[:60].replace("\n", " ")
-                print(f"    [{m['sms_type']:8s}] {m['address']:20s} | {body_preview}")
+                print(f"    [{str(m['sms_type']):8s}] {str(m['address']):20s} | {body_preview}")
         else:
             print("  No SMS found (phone may have no messages, or ADB permission denied)")
     except Exception as e:
@@ -99,7 +99,7 @@ def main():
         if contacts:
             for c in contacts[:3]:
                 phones = json.loads(c.get("phone_numbers") or "[]")
-                print(f"    {c['name']:30s} | {', '.join(phones[:2])}")
+                print(f"    {str(c['name']):30s} | {', '.join(phones[:2])}")
     except Exception as e:
         print(f"  ERROR extracting contacts: {e}")
 
