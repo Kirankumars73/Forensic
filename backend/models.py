@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import hashlib
 import datetime
@@ -12,7 +13,7 @@ def _sha(value):
         return value
     raw = str(value).encode("utf-8")
     digest = hashlib.sha256(raw).hexdigest()
-    return f"••••[{digest[:20]}]"
+    return f"[LOCKED:{digest[:16]}]"
 
 
 class Case(db.Model):
