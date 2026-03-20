@@ -278,9 +278,10 @@ class MediaFile(db.Model):
         d["filename"] = _sha(d["filename"])
         d["file_hash"] = _sha(d["file_hash"]) if d["file_hash"] else d["file_hash"]
         d["source_path"] = _sha(d["source_path"]) if d["source_path"] else d["source_path"]
-        d["gps_latitude"] = _sha(str(d["gps_latitude"])) if d["gps_latitude"] is not None else None
-        d["gps_longitude"] = _sha(str(d["gps_longitude"])) if d["gps_longitude"] is not None else None
-        d["gps_altitude"] = _sha(str(d["gps_altitude"])) if d["gps_altitude"] is not None else None
+        # Keep GPS as None in locked state — hashing coords breaks Leaflet and .toFixed()
+        d["gps_latitude"] = None
+        d["gps_longitude"] = None
+        d["gps_altitude"] = None
         return d
 
 
@@ -389,9 +390,10 @@ class Location(db.Model):
 
     def to_hashed_dict(self):
         d = self.to_dict()
-        d["latitude"] = _sha(str(d["latitude"]))
-        d["longitude"] = _sha(str(d["longitude"]))
-        d["altitude"] = _sha(str(d["altitude"])) if d["altitude"] is not None else None
+        # Keep lat/lon as None in locked state — hashing coords crashes Leaflet maps
+        d["latitude"] = None
+        d["longitude"] = None
+        d["altitude"] = None
         d["address"] = _sha(d["address"]) if d["address"] else d["address"]
         d["source_ref"] = _sha(d["source_ref"]) if d["source_ref"] else d["source_ref"]
         return d

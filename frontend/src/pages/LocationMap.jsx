@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { MapPin } from 'lucide-react'
 
-export default function LocationMap({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function LocationMap({ API, unlocked }) {
   const { deviceId } = useParams()
   const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,18 +12,28 @@ export default function LocationMap({ API }) {
   const leafletMap = useRef(null)
 
   useEffect(() => {
-    fetch(`${API}/api/evidence/${deviceId}/locations`)
+    setLoading(true)
+    // Reset map on data change
+    if (leafletMap.current) {
+      leafletMap.current.remove()
+      leafletMap.current = null
+    }
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(`${API}/api/evidence/${deviceId}/locations`, { headers })
       .then(r => r.json())
       .then(data => {
         setLocations(data)
         setLoading(false)
       })
-  }, [deviceId])
+  }, [deviceId, unlocked])
 
   useEffect(() => {
     if (loading || leafletMap.current) return
     if (typeof window === 'undefined') return
-    // Dynamically load Leaflet CSS + JS
+    // Only render map if we have valid coordinates
+    const validLocs = locations.filter(l => typeof l.latitude === 'number' && typeof l.longitude === 'number')
+    if (validLocs.length === 0) return
+
     const loadLeaflet = async () => {
       if (!window.L) {
         const link = document.createElement('link')
@@ -38,8 +50,8 @@ export default function LocationMap({ API }) {
       const L = window.L
       if (!mapRef.current || leafletMap.current) return
       const map = L.map(mapRef.current, {
-        center: locations.length ? [locations[0].latitude, locations[0].longitude] : [20.5937, 78.9629],
-        zoom: locations.length ? 10 : 5,
+        center: [validLocs[0].latitude, validLocs[0].longitude],
+        zoom: 10,
       })
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '©OpenStreetMap ©CartoDB',
@@ -51,7 +63,7 @@ export default function LocationMap({ API }) {
         wifi: '#7c4dff', gps_provider: '#ffd600',
       }
 
-      locations.forEach(loc => {
+      validLocs.forEach(loc => {
         const color = SOURCE_COLORS[loc.source] || '#00e5ff'
         const marker = L.circleMarker([loc.latitude, loc.longitude], {
           radius: 6, fillColor: color, color: '#000', weight: 1, opacity: 0.8, fillOpacity: 0.9
@@ -75,6 +87,8 @@ export default function LocationMap({ API }) {
 
   const SRC_COLORS = { photo_exif:'var(--orange)', gps:'var(--green)', network:'var(--cyan)', wifi:'var(--purple)', gps_provider:'var(--yellow)' }
 
+  const validLocs = locations.filter(l => typeof l.latitude === 'number')
+
   return (
     <div>
       <div className="topbar">
@@ -97,7 +111,15 @@ export default function LocationMap({ API }) {
           <div className="empty-state"><div className="empty-state-icon">🗺️</div><div className="empty-state-text">No location data extracted</div></div>
         ) : (
           <>
-            <div ref={mapRef} className="map-container" style={{ marginBottom:16 }} />
+            {!unlocked && (
+              <div className="alert alert-info" style={{ marginBottom: 12 }}>
+                <span>🔒</span>
+                <div>Location coordinates are <b>locked</b>. Enter <b>case k</b> on the Dashboard to reveal GPS data and show pins on the map.</div>
+              </div>
+            )}
+            {validLocs.length > 0 && (
+              <div ref={mapRef} className="map-container" style={{ marginBottom:16 }} />
+            )}
             <div className="card" style={{ padding:0 }}>
               <div className="table-wrapper">
                 <table>
@@ -106,8 +128,12 @@ export default function LocationMap({ API }) {
                     {locations.slice(0,100).map((l,i) => (
                       <tr key={l.id}>
                         <td className="muted">{i+1}</td>
-                        <td className="mono">{l.latitude?.toFixed(6)}</td>
-                        <td className="mono">{l.longitude?.toFixed(6)}</td>
+                        <td className="mono">
+                          {typeof l.latitude === 'number' ? l.latitude.toFixed(6) : <span style={{color:'var(--red)',fontSize:10}}>🔒 locked</span>}
+                        </td>
+                        <td className="mono">
+                          {typeof l.longitude === 'number' ? l.longitude.toFixed(6) : <span style={{color:'var(--red)',fontSize:10}}>🔒 locked</span>}
+                        </td>
                         <td><span className="badge" style={{ background:`${SRC_COLORS[l.source]||'var(--text-muted)'}15`, color: SRC_COLORS[l.source]||'var(--text-muted)' }}>{l.source}</span></td>
                         <td className="muted">{l.source_ref?.slice(0,30) || '—'}</td>
                         <td className="muted">{l.timestamp?.slice(0,16).replace('T',' ') || '—'}</td>

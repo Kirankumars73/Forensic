@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Image, MapPin, X } from 'lucide-react'
 
-export default function MediaGallery({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function MediaGallery({ API, unlocked }) {
   const { deviceId } = useParams()
   const [media, setMedia] = useState([])
   const [total, setTotal] = useState(0)
@@ -18,7 +20,8 @@ export default function MediaGallery({ API }) {
     let url = `${API}/api/evidence/${deviceId}/media?page=${pg}&per_page=60`
     if (ft) url += `&type=${ft}`
     if (gps) url += `&has_gps=true`
-    fetch(url).then(r=>r.json()).then(data => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r=>r.json()).then(data => {
       setMedia(data.items || [])
       setTotal(data.total || 0)
       setPages(data.pages || 1)
@@ -26,7 +29,7 @@ export default function MediaGallery({ API }) {
       setLoading(false)
     })
   }
-  useEffect(() => { fetch_() }, [deviceId])
+  useEffect(() => { fetch_() }, [deviceId, unlocked])
 
   const fileIcon = (type) => type === 'photo' ? '🖼️' : type === 'video' ? '🎥' : type === 'audio' ? '🎵' : '📄'
 
@@ -101,8 +104,8 @@ export default function MediaGallery({ API }) {
                 ['Camera', `${selected.camera_make || ''} ${selected.camera_model || ''}`.trim() || '—'],
                 ['Resolution', selected.width ? `${selected.width}×${selected.height}` : '—'],
                 ['SHA-256', selected.file_hash?.slice(0,24)+'…' || '—'],
-                ['GPS Latitude', selected.gps_latitude?.toFixed(6) ?? '—'],
-                ['GPS Longitude', selected.gps_longitude?.toFixed(6) ?? '—'],
+                ['GPS Latitude', typeof selected.gps_latitude === 'number' ? selected.gps_latitude.toFixed(6) : '—'],
+                ['GPS Longitude', typeof selected.gps_longitude === 'number' ? selected.gps_longitude.toFixed(6) : '—'],
                 ['Altitude', selected.gps_altitude ? `${selected.gps_altitude}m` : '—'],
                 ['Source Path', selected.source_path || '—'],
               ].map(([k,v]) => (
@@ -112,7 +115,7 @@ export default function MediaGallery({ API }) {
                 </div>
               ))}
             </div>
-            {selected.gps_latitude && selected.gps_longitude && (
+            {typeof selected.gps_latitude === 'number' && typeof selected.gps_longitude === 'number' && (
               <div style={{ marginTop:12 }}>
                 <a href={`https://maps.google.com/?q=${selected.gps_latitude},${selected.gps_longitude}`}
                   target="_blank" rel="noopener noreferrer" className="btn btn-green" style={{ fontSize:12 }}>
