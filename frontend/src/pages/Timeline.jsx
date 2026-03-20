@@ -8,7 +8,9 @@ const EVENT_COLORS = {
 }
 const EVENT_ICONS = { call: '📞', sms: '💬', media: '📸', app_data: '📱', email: '📧', location: '📍' }
 
-export default function Timeline({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function Timeline({ API, unlocked }) {
   const { deviceId } = useParams()
   const [events, setEvents] = useState([])
   const [total, setTotal] = useState(0)
@@ -17,14 +19,15 @@ export default function Timeline({ API }) {
   const [visible, setVisible] = useState(100)
 
   useEffect(() => {
-    fetch(`${API}/api/evidence/${deviceId}/timeline`)
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(`${API}/api/evidence/${deviceId}/timeline`, { headers })
       .then(r => r.json())
       .then(data => {
         setEvents(data.events || [])
         setTotal(data.total || 0)
         setLoading(false)
       })
-  }, [deviceId])
+  }, [deviceId, unlocked])
 
   const filtered = typeFilter ? events.filter(e => e.event_type === typeFilter) : events
   const shown = filtered.slice(0, visible)

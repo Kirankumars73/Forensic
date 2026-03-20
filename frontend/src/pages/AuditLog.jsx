@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Shield } from 'lucide-react'
 
-export default function AuditLog({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function AuditLog({ API, unlocked }) {
   const { deviceId } = useParams()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,11 +12,15 @@ export default function AuditLog({ API }) {
   useEffect(() => {
     let url = `${API}/api/audit`
     if (deviceId) url += `?device_id=${deviceId}`
-    fetch(url).then(r => r.json()).then(data => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r => r.json()).then(data => {
       setLogs(data)
       setLoading(false)
+    }).catch(e => {
+      console.error("Audit log fetch failed:", e)
+      setLoading(false)
     })
-  }, [deviceId])
+  }, [deviceId, unlocked])
 
   return (
     <div>

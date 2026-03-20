@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Phone, MessageSquare, Users, Image, Mail, MapPin, Activity, Folder, ChevronRight } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts'
+import { BarChart2, Phone, MessageSquare, Users, Image, Mail, MapPin, Activity, Folder, ChevronRight, Lock, Unlock, ShieldCheck } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
-export default function Dashboard({ deviceId, setDeviceId, API }) {
+export default function Dashboard({ deviceId, setDeviceId, API, unlocked, setUnlocked }) {
   const [cases, setCases] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [adminInput, setAdminInput] = useState('')
+  const [unlockMsg, setUnlockMsg] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -27,6 +29,24 @@ export default function Dashboard({ deviceId, setDeviceId, API }) {
     if (!deviceId) return
     fetch(`${API}/api/evidence/${deviceId}/stats`).then(r => r.json()).then(setStats)
   }, [deviceId])
+
+  const handleAdminInput = (e) => {
+    const val = e.target.value
+    setAdminInput(val)
+    if (val.trim().toLowerCase() === 'case k') {
+      setUnlocked(true)
+      setUnlockMsg('success')
+    } else if (unlocked) {
+      setUnlocked(false)
+      setUnlockMsg('')
+    }
+  }
+
+  const handleLock = () => {
+    setUnlocked(false)
+    setAdminInput('')
+    setUnlockMsg('')
+  }
 
   const statCards = stats ? [
     { label: 'Call Logs', value: stats.calls, icon: Phone, color: 'var(--green)' },
@@ -79,6 +99,85 @@ export default function Dashboard({ deviceId, setDeviceId, API }) {
       </div>
 
       <div className="page-content">
+
+        {/* ======================= ADMINISTRATOR ENTRY ======================= */}
+        <div className="card" style={{
+          border: unlocked
+            ? '1.5px solid var(--green)'
+            : '1.5px solid rgba(255,71,87,0.5)',
+          marginBottom: 18,
+          background: unlocked
+            ? 'linear-gradient(135deg, rgba(0,230,118,0.06) 0%, var(--bg-card) 100%)'
+            : 'linear-gradient(135deg, rgba(255,71,87,0.06) 0%, var(--bg-card) 100%)',
+        }}>
+          <div className="card-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {unlocked
+                ? <Unlock size={15} color="var(--green)" />
+                : <Lock size={15} color="var(--red)" />
+              }
+              Administrator Entry
+            </div>
+            <span className={`badge ${unlocked ? 'badge-green' : ''}`} style={!unlocked ? { background: 'rgba(255,71,87,0.15)', color: '#ff4757' } : {}}>
+              {unlocked ? '🔓 UNLOCKED' : '🔒 LOCKED'}
+            </span>
+          </div>
+
+          <div style={{ padding: '14px 0 4px' }}>
+            {!unlocked ? (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  All forensic data is currently <strong style={{ color: '#ff4757' }}>hashed (SHA-256)</strong>. Enter the administrator passphrase to reveal actual data.
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="password"
+                    value={adminInput}
+                    onChange={handleAdminInput}
+                    placeholder="Administrator Entry Only"
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      outline: 'none',
+                      fontFamily: 'monospace',
+                      letterSpacing: adminInput ? '0.2em' : 'normal',
+                    }}
+                    autoComplete="off"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    Type passphrase to unlock
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ShieldCheck size={22} color="var(--green)" />
+                  <div>
+                    <div style={{ color: 'var(--green)', fontWeight: 700, fontSize: 14 }}>Data successfully unlocked</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>
+                      All evidence pages now show real readable data. Navigate to any section.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleLock}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ff4757', borderColor: 'rgba(255,71,87,0.4)' }}
+                >
+                  <Lock size={12} /> Re-lock Data
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* ================================================================== */}
+
         {/* No device selected */}
         {!deviceId && !loading && (
           <div className="alert alert-info">

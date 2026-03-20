@@ -8,7 +8,9 @@ const TYPE_COLORS = {
   voicemail: 'badge-purple', blocked: 'badge-muted',
 }
 
-export default function CallLogs({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function CallLogs({ API, unlocked }) {
   const { deviceId } = useParams()
   const [calls, setCalls] = useState([])
   const [total, setTotal] = useState(0)
@@ -24,7 +26,8 @@ export default function CallLogs({ API }) {
     let url = `${API}/api/evidence/${deviceId}/calls?page=${pg}&per_page=50`
     if (sq) url += `&search=${encodeURIComponent(sq)}`
     if (tf) url += `&type=${tf}`
-    fetch(url).then(r => r.json()).then(data => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r => r.json()).then(data => {
       setCalls(data.items || [])
       setTotal(data.total || 0)
       setPages(data.pages || 1)
@@ -33,7 +36,7 @@ export default function CallLogs({ API }) {
     })
   }
 
-  useEffect(() => { fetchCalls() }, [deviceId])
+  useEffect(() => { fetchCalls() }, [deviceId, unlocked])
 
   useEffect(() => {
     fetch(`${API}/api/evidence/${deviceId}/stats`).then(r => r.json()).then(setStats)

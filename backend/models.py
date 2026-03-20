@@ -6,6 +6,15 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 
+def _sha(value):
+    """Return a short SHA-256 display hash for a value, or empty string if falsy."""
+    if value is None or value == "" or value == []:
+        return value
+    raw = str(value).encode("utf-8")
+    digest = hashlib.sha256(raw).hexdigest()
+    return f"••••[{digest[:20]}]"
+
+
 class Case(db.Model):
     __tablename__ = "cases"
     id = db.Column(db.Integer, primary_key=True)
@@ -34,6 +43,14 @@ class Case(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["investigator"] = _sha(d["investigator"])
+        d["agency"] = _sha(d["agency"])
+        d["description"] = _sha(d["description"])
+        d["suspect_name"] = _sha(d["suspect_name"])
+        return d
 
 
 class Device(db.Model):
@@ -87,6 +104,14 @@ class Device(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["serial"] = _sha(d["serial"])
+        d["imei"] = _sha(d["imei"])
+        d["phone_number"] = _sha(d["phone_number"])
+        d["sim_operator"] = _sha(d["sim_operator"])
+        return d
+
 
 class CallLog(db.Model):
     __tablename__ = "call_logs"
@@ -112,6 +137,13 @@ class CallLog(db.Model):
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "geocoded_location": self.geocoded_location,
         }
+
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["number"] = _sha(d["number"])
+        d["name"] = _sha(d["name"]) if d["name"] else d["name"]
+        d["geocoded_location"] = _sha(d["geocoded_location"]) if d["geocoded_location"] else d["geocoded_location"]
+        return d
 
     def _fmt_duration(self):
         if not self.duration_seconds:
@@ -155,6 +187,14 @@ class SMS(db.Model):
             "mms_subject": self.mms_subject,
         }
 
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["address"] = _sha(d["address"])
+        d["contact_name"] = _sha(d["contact_name"]) if d["contact_name"] else d["contact_name"]
+        d["body"] = _sha(d["body"])
+        d["mms_subject"] = _sha(d["mms_subject"]) if d["mms_subject"] else d["mms_subject"]
+        return d
+
 
 class Contact(db.Model):
     __tablename__ = "contacts"
@@ -180,6 +220,15 @@ class Contact(db.Model):
             "last_contacted": self.last_contacted.isoformat() if self.last_contacted else None,
             "times_contacted": self.times_contacted,
         }
+
+    def to_hashed_dict(self):
+        import json
+        d = self.to_dict()
+        d["name"] = _sha(d["name"])
+        d["phone_numbers"] = [_sha(p) for p in d["phone_numbers"]]
+        d["emails"] = [_sha(e) for e in d["emails"]]
+        d["organization"] = _sha(d["organization"]) if d["organization"] else d["organization"]
+        return d
 
 
 class MediaFile(db.Model):
@@ -224,6 +273,16 @@ class MediaFile(db.Model):
             "source_path": self.source_path,
         }
 
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["filename"] = _sha(d["filename"])
+        d["file_hash"] = _sha(d["file_hash"]) if d["file_hash"] else d["file_hash"]
+        d["source_path"] = _sha(d["source_path"]) if d["source_path"] else d["source_path"]
+        d["gps_latitude"] = _sha(str(d["gps_latitude"])) if d["gps_latitude"] is not None else None
+        d["gps_longitude"] = _sha(str(d["gps_longitude"])) if d["gps_longitude"] is not None else None
+        d["gps_altitude"] = _sha(str(d["gps_altitude"])) if d["gps_altitude"] is not None else None
+        return d
+
 
 class AppData(db.Model):
     __tablename__ = "app_data"
@@ -251,6 +310,13 @@ class AppData(db.Model):
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "extra_metadata": self.extra_metadata,
         }
+
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["sender"] = _sha(d["sender"]) if d["sender"] else d["sender"]
+        d["recipient"] = _sha(d["recipient"]) if d["recipient"] else d["recipient"]
+        d["content"] = _sha(d["content"])
+        return d
 
 
 class Email(db.Model):
@@ -283,6 +349,16 @@ class Email(db.Model):
             "message_id": self.message_id,
         }
 
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["account"] = _sha(d["account"])
+        d["sender"] = _sha(d["sender"])
+        d["recipients"] = [_sha(r) for r in d["recipients"]]
+        d["subject"] = _sha(d["subject"])
+        d["body"] = _sha(d["body"])
+        d["message_id"] = _sha(d["message_id"]) if d["message_id"] else d["message_id"]
+        return d
+
 
 class Location(db.Model):
     __tablename__ = "locations"
@@ -311,6 +387,15 @@ class Location(db.Model):
             "address": self.address,
         }
 
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["latitude"] = _sha(str(d["latitude"]))
+        d["longitude"] = _sha(str(d["longitude"]))
+        d["altitude"] = _sha(str(d["altitude"])) if d["altitude"] is not None else None
+        d["address"] = _sha(d["address"]) if d["address"] else d["address"]
+        d["source_ref"] = _sha(d["source_ref"]) if d["source_ref"] else d["source_ref"]
+        return d
+
 
 class AuditLog(db.Model):
     __tablename__ = "audit_logs"
@@ -338,3 +423,9 @@ class AuditLog(db.Model):
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "ip_address": self.ip_address,
         }
+
+    def to_hashed_dict(self):
+        d = self.to_dict()
+        d["actor"] = _sha(d["actor"]) if d["actor"] and d["actor"] != "system" else d["actor"]
+        d["details"] = _sha(d["details"]) if d["details"] else d["details"]
+        return d

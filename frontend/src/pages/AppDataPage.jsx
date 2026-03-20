@@ -7,7 +7,9 @@ const APP_COLORS = {
   instagram: '#e1306c', telegram: '#2aabee', facebook: '#1877f2',
 }
 
-export default function AppDataPage({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function AppDataPage({ API, unlocked }) {
   const { deviceId } = useParams()
   const [data, setData] = useState([])
   const [total, setTotal] = useState(0)
@@ -23,7 +25,8 @@ export default function AppDataPage({ API }) {
     let url = `${API}/api/evidence/${deviceId}/apps?page=${pg}&per_page=50`
     if (af) url += `&app=${af}`
     if (sq) url += `&search=${encodeURIComponent(sq)}`
-    fetch(url).then(r=>r.json()).then(d => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r=>r.json()).then(d => {
       setData(d.items || [])
       setTotal(d.total || 0)
       setPages(d.pages || 1)
@@ -33,7 +36,7 @@ export default function AppDataPage({ API }) {
       setLoading(false)
     })
   }
-  useEffect(() => { fetch_() }, [deviceId])
+  useEffect(() => { fetch_() }, [deviceId, unlocked])
 
   return (
     <div>

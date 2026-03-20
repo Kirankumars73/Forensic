@@ -11,6 +11,8 @@ export default function DeviceConnect({ API, setDeviceId }) {
   const [scanning, setScanning] = useState(false)
   const [extracting, setExtractingId] = useState(null)
   const [progress, setProgress] = useState({})
+  const [scanError, setScanError] = useState(null)
+  const [scanWarnings, setScanWarnings] = useState([])
   const navigate = useNavigate()
 
   const loadCases = () => fetch(`${API}/api/cases`).then(r=>r.json()).then(setCases)
@@ -20,10 +22,17 @@ export default function DeviceConnect({ API, setDeviceId }) {
 
   const scanADB = () => {
     setScanning(true)
+    setScanError(null)
+    setScanWarnings([])
     fetch(`${API}/api/devices/list-adb`)
       .then(r => r.json())
-      .then(data => { setAdbDevices(data.devices || []); setScanning(false) })
-      .catch(() => setScanning(false))
+      .then(data => {
+        setAdbDevices(data.devices || [])
+        setScanError(data.error || null)
+        setScanWarnings(data.warnings || [])
+        setScanning(false)
+      })
+      .catch(e => { setScanError('Could not reach backend. Is it running?'); setScanning(false) })
   }
 
   const startExtraction = () => {
@@ -80,7 +89,19 @@ export default function DeviceConnect({ API, setDeviceId }) {
                 Connect via USB or OTG cable. Accept the ADB authorization prompt on the phone.
               </div>
             </div>
-            {adbDevices.length === 0 ? (
+            {scanError && (
+              <div className="alert alert-danger" style={{ marginBottom:12 }}>
+                <span>❌</span>
+                <div style={{ fontSize:12 }}>{scanError}</div>
+              </div>
+            )}
+            {scanWarnings.map((w, i) => (
+              <div key={i} className="alert alert-warn" style={{ marginBottom:12 }}>
+                <span>⚠️</span>
+                <div style={{ fontSize:12 }}>{w}</div>
+              </div>
+            ))}
+            {adbDevices.length === 0 && !scanError && scanWarnings.length === 0 ? (
               <div className="empty-state" style={{ padding:'20px 0' }}>
                 <div className="empty-state-icon">🔌</div>
                 <div className="empty-state-text">No ADB devices detected</div>

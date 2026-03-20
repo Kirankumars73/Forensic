@@ -7,7 +7,7 @@ from flask import Flask
 from flask_cors import CORS
 from config import Config
 from models import db
-from routes import cases_bp, devices_bp, evidence_bp, reports_bp, audit_bp
+from routes import cases_bp, devices_bp, evidence_bp, reports_bp, audit_bp, admin_bp
 
 # Configure logging
 logging.basicConfig(
@@ -19,7 +19,7 @@ logging.basicConfig(
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"])
+    CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"])
 
     db.init_app(app)
     with app.app_context():
@@ -30,6 +30,7 @@ def create_app():
     app.register_blueprint(evidence_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(audit_bp)
+    app.register_blueprint(admin_bp)
 
     @app.route("/api/health")
     def health():

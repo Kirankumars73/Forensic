@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Users, Search } from 'lucide-react'
 
-export default function Contacts({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function Contacts({ API, unlocked }) {
   const { deviceId } = useParams()
   const [contacts, setContacts] = useState([])
   const [total, setTotal] = useState(0)
@@ -15,7 +17,8 @@ export default function Contacts({ API }) {
     setLoading(true)
     let url = `${API}/api/evidence/${deviceId}/contacts?page=${pg}&per_page=50`
     if (sq) url += `&search=${encodeURIComponent(sq)}`
-    fetch(url).then(r=>r.json()).then(data => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r=>r.json()).then(data => {
       setContacts(data.items || [])
       setTotal(data.total || 0)
       setPages(data.pages || 1)
@@ -23,7 +26,7 @@ export default function Contacts({ API }) {
       setLoading(false)
     })
   }
-  useEffect(() => { fetch_() }, [deviceId])
+  useEffect(() => { fetch_() }, [deviceId, unlocked])
 
   return (
     <div>

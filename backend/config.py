@@ -17,5 +17,5 @@ class Config:
     EVIDENCE_DIR = EVIDENCE_DIR
     THUMBNAILS_DIR = THUMBNAILS_DIR
     REPORTS_DIR = REPORTS_DIR
-    ADB_PATH = os.environ.get("ADB_PATH", "adb")  # assume adb is in PATH
+    ADB_PATH = os.environ.get("ADB_PATH", r"C:\Users\kiran\Downloads\platform-tools-latest-windows\platform-tools\adb.exe")
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500 MB upload limit

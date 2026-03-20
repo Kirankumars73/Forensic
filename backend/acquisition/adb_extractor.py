@@ -104,30 +104,50 @@ class ADBExtractor:
 
     @staticmethod
     def list_devices(adb_path="adb"):
-        """Return a list of connected device serials."""
+        """Return a dict with devices list, warnings, and error info."""
+        response = {"devices": [], "warnings": [], "error": None}
         try:
             result = subprocess.run(
                 [adb_path, "devices", "-l"],
                 capture_output=True, text=True, timeout=10
             )
             lines = result.stdout.strip().splitlines()
-            devices = []
             for line in lines[1:]:  # skip the header
                 line = line.strip()
-                if not line or "offline" in line or "unauthorized" in line:
+                if not line:
                     continue
                 parts = line.split()
-                if len(parts) >= 2 and parts[1] == "device":
-                    info = {"serial": parts[0]}
+                if len(parts) < 2:
+                    continue
+                serial = parts[0]
+                status = parts[1]
+                if status == "unauthorized":
+                    response["warnings"].append(
+                        f"Device {serial} is unauthorized. Open your phone and accept the USB debugging prompt, then scan again."
+                    )
+                elif status == "offline":
+                    response["warnings"].append(
+                        f"Device {serial} is offline. Try disconnecting and reconnecting the USB cable."
+                    )
+                elif status == "device":
+                    info = {"serial": serial}
                     for p in parts[2:]:
                         if ":" in p:
                             k, _, v = p.partition(":")
                             info[k] = v
-                    devices.append(info)
-            return devices
+                    response["devices"].append(info)
+            return response
+        except FileNotFoundError:
+            response["error"] = "ADB not found. Install Android SDK Platform-Tools and ensure 'adb' is in your system PATH."
+            logger.error("ADB binary not found at '%s'", adb_path)
+            return response
+        except subprocess.TimeoutExpired:
+            response["error"] = "ADB command timed out. Check your USB connection and try again."
+            return response
         except Exception as e:
+            response["error"] = f"ADB scan failed: {str(e)}"
             logger.error("list_devices error: %s", e)
-            return []
+            return response
 
     # ------------------------------------------------------------------
     # Device Info

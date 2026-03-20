@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { MessageSquare, Search } from 'lucide-react'
 
-export default function SMSViewer({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function SMSViewer({ API, unlocked }) {
   const { deviceId } = useParams()
   const [messages, setMessages] = useState([])
   const [total, setTotal] = useState(0)
@@ -16,7 +18,8 @@ export default function SMSViewer({ API }) {
     setLoading(true)
     let url = `${API}/api/evidence/${deviceId}/sms?page=${pg}&per_page=100`
     if (sq) url += `&search=${encodeURIComponent(sq)}`
-    fetch(url).then(r=>r.json()).then(data => {
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(url, { headers }).then(r=>r.json()).then(data => {
       setMessages(data.items || [])
       setTotal(data.total || 0)
       setPages(data.pages || 1)
@@ -24,7 +27,7 @@ export default function SMSViewer({ API }) {
       setLoading(false)
     })
   }
-  useEffect(() => { fetchSMS() }, [deviceId])
+  useEffect(() => { fetchSMS() }, [deviceId, unlocked])
 
   // Group by thread or address
   const threads = {}

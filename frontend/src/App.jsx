@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Folder, Smartphone, Phone, MessageSquare,
   Users, Image, AppWindow, Mail, MapPin, Clock, Search,
-  FileText, Shield, ChevronRight, Activity
+  FileText, Shield, ChevronRight, Activity, Lock, Unlock
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard.jsx'
 import Cases from './pages/Cases.jsx'
@@ -22,7 +22,7 @@ import ReportPage from './pages/ReportPage.jsx'
 
 const API = 'http://localhost:5000'
 
-function Sidebar({ deviceId }) {
+function Sidebar({ deviceId, unlocked }) {
   const navItems = [
     { label: 'Overview', icon: LayoutDashboard, path: '/' },
     { label: 'Cases', icon: Folder, path: '/cases' },
@@ -84,7 +84,15 @@ function Sidebar({ deviceId }) {
         ))}
       </nav>
       <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:10, color:'var(--text-muted)' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, fontSize: 10,
+          color: unlocked ? 'var(--green)' : 'var(--red)',
+          fontWeight: 600, marginBottom: 4
+        }}>
+          {unlocked ? <Unlock size={12} /> : <Lock size={12} />}
+          {unlocked ? '🔓 Data Unlocked' : '🔒 Data Locked (Hashed)'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-muted)' }}>
           <Activity size={12} />
           ForensicX v2.0 — Python/Flask + React
         </div>
@@ -94,29 +102,52 @@ function Sidebar({ deviceId }) {
 }
 
 export default function App() {
-  const [deviceId, setDeviceId] = useState(null)
+  const [deviceId, setDeviceIdRaw] = useState(() => {
+    const saved = localStorage.getItem('forensicx_device_id')
+    return saved ? parseInt(saved) : null
+  })
+  const [unlocked, setUnlocked] = useState(false)
+
+  const setDeviceId = (id) => {
+    setDeviceIdRaw(id)
+    if (id) localStorage.setItem('forensicx_device_id', id)
+    else localStorage.removeItem('forensicx_device_id')
+  }
+
+  // Auto-select first completed device if none stored
+  useEffect(() => {
+    if (!deviceId) {
+      fetch(`${API}/api/devices`)
+        .then(r => r.json())
+        .then(devs => {
+          const best = devs.find(d => d.acquisition_status === 'completed') || devs[0]
+          if (best) setDeviceId(best.id)
+        })
+        .catch(() => {})
+    }
+  }, [])
 
   return (
     <BrowserRouter>
       <div className="app-layout">
-        <Sidebar deviceId={deviceId} />
+        <Sidebar deviceId={deviceId} unlocked={unlocked} />
         <div className="main-area">
           <Routes>
-            <Route path="/" element={<Dashboard deviceId={deviceId} setDeviceId={setDeviceId} API={API} />} />
-            <Route path="/cases" element={<Cases API={API} setDeviceId={setDeviceId} />} />
+            <Route path="/" element={<Dashboard deviceId={deviceId} setDeviceId={setDeviceId} API={API} unlocked={unlocked} setUnlocked={setUnlocked} />} />
+            <Route path="/cases" element={<Cases API={API} setDeviceId={setDeviceId} unlocked={unlocked} />} />
             <Route path="/device" element={<DeviceConnect API={API} setDeviceId={setDeviceId} />} />
-            <Route path="/evidence/:deviceId/calls" element={<CallLogs API={API} />} />
-            <Route path="/evidence/:deviceId/sms" element={<SMSViewer API={API} />} />
-            <Route path="/evidence/:deviceId/contacts" element={<Contacts API={API} />} />
-            <Route path="/evidence/:deviceId/media" element={<MediaGallery API={API} />} />
-            <Route path="/evidence/:deviceId/apps" element={<AppDataPage API={API} />} />
-            <Route path="/evidence/:deviceId/emails" element={<EmailsPage API={API} />} />
-            <Route path="/evidence/:deviceId/locations" element={<LocationMap API={API} />} />
-            <Route path="/evidence/:deviceId/timeline" element={<Timeline API={API} />} />
-            <Route path="/evidence/:deviceId/search" element={<KeywordSearch API={API} />} />
-            <Route path="/evidence/:deviceId/audit" element={<AuditLog API={API} />} />
+            <Route path="/evidence/:deviceId/calls" element={<CallLogs API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/sms" element={<SMSViewer API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/contacts" element={<Contacts API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/media" element={<MediaGallery API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/apps" element={<AppDataPage API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/emails" element={<EmailsPage API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/locations" element={<LocationMap API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/timeline" element={<Timeline API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/search" element={<KeywordSearch API={API} unlocked={unlocked} />} />
+            <Route path="/evidence/:deviceId/audit" element={<AuditLog API={API} unlocked={unlocked} />} />
             <Route path="/evidence/:deviceId/report" element={<ReportPage API={API} />} />
-            <Route path="/audit" element={<AuditLog API={API} />} />
+            <Route path="/audit" element={<AuditLog API={API} unlocked={unlocked} />} />
           </Routes>
         </div>
       </div>

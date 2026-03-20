@@ -20,6 +20,31 @@ from reporting.pdf_generator import generate_report
 
 logger = logging.getLogger(__name__)
 
+ADMIN_KEY = "case-k-unlocked"
+
+def _is_unlocked():
+    """Return True if the request includes the valid admin unlock header."""
+    return request.headers.get("X-Admin-Key", "") == ADMIN_KEY
+
+def _serialize(obj, unlocked=None):
+    """Return plain or hashed dict depending on unlock state."""
+    if unlocked is None:
+        unlocked = _is_unlocked()
+    return obj.to_dict() if unlocked else obj.to_hashed_dict()
+
+# -------------------------
+# Blueprint: Admin Unlock
+# -------------------------
+admin_bp = Blueprint("admin", __name__)
+
+@admin_bp.route("/api/admin/unlock", methods=["POST"])
+def check_unlock():
+    data = request.get_json() or {}
+    passphrase = data.get("passphrase", "").strip().lower()
+    if passphrase == "case k":
+        return jsonify({"unlocked": True, "key": ADMIN_KEY})
+    return jsonify({"unlocked": False}), 401
+
 # -------------------------
 # Blueprint: Cases
 # -------------------------
@@ -28,7 +53,8 @@ cases_bp = Blueprint("cases", __name__)
 @cases_bp.route("/api/cases", methods=["GET"])
 def list_cases():
     cases = Case.query.order_by(Case.created_at.desc()).all()
-    return jsonify([c.to_dict() for c in cases])
+    unlocked = _is_unlocked()
+    return jsonify([_serialize(c, unlocked) for c in cases])
 
 @cases_bp.route("/api/cases", methods=["POST"])
 def create_case():
@@ -50,7 +76,7 @@ def create_case():
 @cases_bp.route("/api/cases/<int:case_id>", methods=["GET"])
 def get_case(case_id):
     case = Case.query.get_or_404(case_id)
-    return jsonify(case.to_dict())
+    return jsonify(_serialize(case))
 
 @cases_bp.route("/api/cases/<int:case_id>", methods=["PUT"])
 def update_case(case_id):
@@ -79,18 +105,19 @@ devices_bp = Blueprint("devices", __name__)
 def list_adb_devices():
     """List connected ADB devices."""
     adb_path = current_app.config.get("ADB_PATH", "adb")
-    devices = ADBExtractor.list_devices(adb_path=adb_path)
-    return jsonify({"devices": devices})
+    result = ADBExtractor.list_devices(adb_path=adb_path)
+    return jsonify(result)
 
 @devices_bp.route("/api/devices", methods=["GET"])
 def list_devices():
     devs = Device.query.order_by(Device.created_at.desc()).all()
+    # Device list used for selection — always return full dict so IDs/status work
     return jsonify([d.to_dict() for d in devs])
 
 @devices_bp.route("/api/devices/<int:device_id>", methods=["GET"])
 def get_device(device_id):
     dev = Device.query.get_or_404(device_id)
-    return jsonify(dev.to_dict())
+    return jsonify(_serialize(dev))
 
 _extraction_status = {}  # device_id → {progress, step, done, error}
 
@@ -336,8 +363,9 @@ def get_calls(device_id):
     if call_type:
         q = q.filter(CallLog.call_type == call_type)
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [c.to_dict() for c in pag.items],
+        "items": [_serialize(c, unlocked) for c in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
@@ -348,8 +376,9 @@ def get_sms(device_id):
     if search:
         q = q.filter(db.or_(SMS.body.contains(search), SMS.address.contains(search)))
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [s.to_dict() for s in pag.items],
+        "items": [_serialize(s, unlocked) for s in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
@@ -360,8 +389,9 @@ def get_contacts(device_id):
     if search:
         q = q.filter(Contact.name.contains(search))
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [c.to_dict() for c in pag.items],
+        "items": [_serialize(c, unlocked) for c in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
@@ -375,8 +405,9 @@ def get_media(device_id):
     if has_gps == "true":
         q = q.filter(MediaFile.gps_latitude != None)
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [m.to_dict() for m in pag.items],
+        "items": [_serialize(m, unlocked) for m in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
@@ -399,8 +430,9 @@ def get_apps(device_id):
     if search:
         q = q.filter(AppData.content.contains(search))
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [a.to_dict() for a in pag.items],
+        "items": [_serialize(a, unlocked) for a in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
@@ -411,24 +443,27 @@ def get_emails(device_id):
     if search:
         q = q.filter(db.or_(Email.subject.contains(search), Email.sender.contains(search), Email.body.contains(search)))
     pag = _paginate(q, request)
+    unlocked = _is_unlocked()
     return jsonify({
-        "items": [e.to_dict() for e in pag.items],
+        "items": [_serialize(e, unlocked) for e in pag.items],
         "total": pag.total, "page": pag.page, "pages": pag.pages
     })
 
 @evidence_bp.route("/api/evidence/<int:device_id>/locations", methods=["GET"])
 def get_locations(device_id):
     locs = Location.query.filter_by(device_id=device_id).order_by(Location.timestamp.desc()).all()
-    return jsonify([l.to_dict() for l in locs])
+    unlocked = _is_unlocked()
+    return jsonify([_serialize(l, unlocked) for l in locs])
 
 @evidence_bp.route("/api/evidence/<int:device_id>/timeline", methods=["GET"])
 def get_timeline(device_id):
-    calls = [c.to_dict() for c in CallLog.query.filter_by(device_id=device_id).all()]
-    sms = [s.to_dict() for s in SMS.query.filter_by(device_id=device_id).all()]
-    media = [m.to_dict() for m in MediaFile.query.filter_by(device_id=device_id).all()]
-    apps = [a.to_dict() for a in AppData.query.filter_by(device_id=device_id).all()]
-    em = [e.to_dict() for e in Email.query.filter_by(device_id=device_id).all()]
-    locs = [l.to_dict() for l in Location.query.filter_by(device_id=device_id).all()]
+    unlocked = _is_unlocked()
+    calls = [_serialize(c, unlocked) for c in CallLog.query.filter_by(device_id=device_id).all()]
+    sms = [_serialize(s, unlocked) for s in SMS.query.filter_by(device_id=device_id).all()]
+    media = [_serialize(m, unlocked) for m in MediaFile.query.filter_by(device_id=device_id).all()]
+    apps = [_serialize(a, unlocked) for a in AppData.query.filter_by(device_id=device_id).all()]
+    em = [_serialize(e, unlocked) for e in Email.query.filter_by(device_id=device_id).all()]
+    locs = [_serialize(l, unlocked) for l in Location.query.filter_by(device_id=device_id).all()]
     events = build_timeline(device_id, call_logs=calls, sms_messages=sms,
                              media_files=media, app_data=apps, emails=em, locations=locs)
     return jsonify({"events": events, "total": len(events)})
@@ -438,10 +473,11 @@ def search_evidence(device_id):
     kw = request.args.get("q", "")
     if not kw:
         return jsonify({"hits": [], "total": 0})
-    calls = [c.to_dict() for c in CallLog.query.filter_by(device_id=device_id).all()]
-    sms = [s.to_dict() for s in SMS.query.filter_by(device_id=device_id).all()]
-    apps = [a.to_dict() for a in AppData.query.filter_by(device_id=device_id).all()]
-    em = [e.to_dict() for e in Email.query.filter_by(device_id=device_id).all()]
+    unlocked = _is_unlocked()
+    calls = [_serialize(c, unlocked) for c in CallLog.query.filter_by(device_id=device_id).all()]
+    sms = [_serialize(s, unlocked) for s in SMS.query.filter_by(device_id=device_id).all()]
+    apps = [_serialize(a, unlocked) for a in AppData.query.filter_by(device_id=device_id).all()]
+    em = [_serialize(e, unlocked) for e in Email.query.filter_by(device_id=device_id).all()]
     hits = keyword_search(kw, call_logs=calls, sms_messages=sms, app_data=apps, emails=em)
     return jsonify({"hits": hits, "total": len(hits), "keyword": kw})
 
@@ -516,7 +552,8 @@ def get_audit_log():
     if device_id:
         q = q.filter_by(device_id=int(device_id))
     logs = q.limit(500).all()
-    return jsonify([a.to_dict() for a in logs])
+    unlocked = _is_unlocked()
+    return jsonify([_serialize(a, unlocked) for a in logs])
 
 # ---- Helper ----
 def _log_audit(case_id, device_id, action, details, actor="system"):

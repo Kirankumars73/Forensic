@@ -4,7 +4,9 @@ import { Search } from 'lucide-react'
 
 const TYPE_COLORS = { call:'badge-green', sms:'badge-cyan', app_data:'badge-purple', email:'badge-yellow' }
 
-export default function KeywordSearch({ API }) {
+const ADMIN_KEY = 'case-k-unlocked'
+
+export default function KeywordSearch({ API, unlocked }) {
   const { deviceId } = useParams()
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState([])
@@ -14,7 +16,8 @@ export default function KeywordSearch({ API }) {
   const search_ = (q) => {
     if (!q.trim()) { setHits([]); return }
     setLoading(true)
-    fetch(`${API}/api/evidence/${deviceId}/search?q=${encodeURIComponent(q)}`)
+    const headers = unlocked ? { 'X-Admin-Key': ADMIN_KEY } : {}
+    fetch(`${API}/api/evidence/${deviceId}/search?q=${encodeURIComponent(q)}`, { headers })
       .then(r => r.json())
       .then(data => {
         setHits(data.hits || [])
